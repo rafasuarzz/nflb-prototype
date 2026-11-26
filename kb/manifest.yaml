@@ -1,0 +1,76 @@
+# Manifiesto de la base de conocimiento.
+#
+# Cada fuente se descarga en kb/sources/<archivo> y la procesa scripts/ingest.py.
+# REGLA: solo entran fuentes oficiales. Rafa revisa cada una (verificada_por_rafa: true)
+# antes de usarla en la evaluación. validado_por_servicios_sociales queda en false en el
+# prototipo; lo cambiará Servicios Sociales en el piloto tras revisar el contenido.
+#
+# Estado: CANDIDATAS propuestas el 2026-11-26, pendientes de verificar por Rafa.
+
+fuentes:
+  - id: ord-telde-prestaciones
+    documento: "Ordenanza reguladora de las prestaciones económicas para atender necesidades sociales — Ayuntamiento de Telde"
+    ambito: municipal
+    url: "https://www.telde.es/wp-content/uploads/2022/07/ordenanzaserviciossociales-1.pdf"
+    archivo: ord-telde-prestaciones.pdf
+    fecha_documento: null        # confirmar fecha de la versión vigente (BOP Las Palmas)
+    verificada_por_rafa: false
+    validado_por_servicios_sociales: false
+
+  - id: telde-prestaciones-web
+    documento: "Prestaciones económicas municipales — web del Ayuntamiento de Telde"
+    ambito: municipal
+    url: "https://www.telde.es/areas/servicios-sociales-y-solidaridad/servicios-sociales/prestaciones-y-tramites/prestaciones-economicas-municipales/"
+    archivo: telde-prestaciones-web.html
+    fecha_documento: null
+    verificada_por_rafa: false
+    validado_por_servicios_sociales: false
+
+  - id: telde-tramites-ss
+    documento: "Trámites presenciales de Servicios Sociales — Ayuntamiento de Telde"
+    ambito: tramite
+    url: "https://www.telde.es/tramites-presenciales/servicios-sociales/"
+    archivo: telde-tramites-ss.html
+    fecha_documento: null
+    verificada_por_rafa: false
+    validado_por_servicios_sociales: false
+
+  - id: ley-imv
+    documento: "Ley 19/2021, de 20 de diciembre, por la que se establece el ingreso mínimo vital (texto consolidado)"
+    ambito: estatal
+    url: "https://www.boe.es/buscar/act.php?id=BOE-A-2021-21007"
+    archivo: ley-imv.html
+    fecha_documento: null        # fecha de la última actualización del consolidado
+    verificada_por_rafa: false
+    validado_por_servicios_sociales: false
+
+  - id: imv-seg-social
+    documento: "Ingreso Mínimo Vital — información para solicitarlo (Seguridad Social)"
+    ambito: estatal
+    url: "https://imv.seg-social.es/"
+    archivo: imv-seg-social.html
+    fecha_documento: null
+    verificada_por_rafa: false
+    validado_por_servicios_sociales: false
+
+  - id: ley-rcc
+    documento: "Ley 5/2022, de 19 de diciembre, de la Renta Canaria de Ciudadanía (texto consolidado)"
+    ambito: autonomico
+    url: "https://www.boe.es/eli/es-cn/l/2022/12/19/5/con"
+    archivo: ley-rcc.html
+    fecha_documento: null
+    verificada_por_rafa: false
+    validado_por_servicios_sociales: false
+
+  - id: rcc-sede
+    documento: "Reconocimiento del derecho a la Renta Canaria de Ciudadanía — Sede electrónica del Gobierno de Canarias (trámite 7441)"
+    ambito: autonomico
+    url: "https://sede.gobiernodecanarias.org/sede/tramites/7441"
+    archivo: rcc-sede.html
+    fecha_documento: null
+    verificada_por_rafa: false
+    validado_por_servicios_sociales: false
+
+  # PENDIENTE: certificado de empadronamiento en Telde (no he encontrado la ficha oficial
+  # en telde.sedelectronica.es). Sin esta fuente, el asistente dirá "Pregunta en tu Unidad
+  # de Trabajo Social cómo conseguirlo".
