@@ -1,0 +1,23 @@
+# Secretos
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+.venv/
+.pytest_cache/
+.ruff_cache/
+
+# Datos locales (BD, PDF, imágenes, modelos descargados)
+var/
+eval/out/
+*.db
+
+# Documentos internos que no van al repo
+ESPECIFICACION_PROTOTIPO.md

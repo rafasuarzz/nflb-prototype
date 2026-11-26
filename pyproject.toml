@@ -1,0 +1,59 @@
+[project]
+name = "nflb"
+version = "0.1.0"
+description = "Prototipo No Family Left Behind: asistente de orientación sobre ayudas sociales en Telde"
+readme = "README.md"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "anthropic>=2.14.0",
+    "faster-whisper>=1.2.1",
+    "numpy>=2.5.5",
+    "pillow>=13.0.0",
+    "pydantic>=2.14.4",
+    "pydantic-settings>=2.16.3",
+    "pypdf>=7.1.1",
+    "python-telegram-bot[job-queue]>=21",
+    "pyyaml>=6.0.4",
+    "rank-bm25>=0.2.2",
+    "reportlab>=5.1.2",
+    "sentence-transformers>=6.3.0",
+    "sqlalchemy>=2.1.9",
+    "structlog>=26.1.0",
+    "torch>=2.15.0",
+    "trafilatura>=2.4.0",
+]
+
+[build-system]
+requires = ["uv_build>=0.13.10,<0.14.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "jiwer>=4.0.0",
+    "pytest>=9.2.0",
+    "pytest-asyncio>=1.5.0",
+    "ruff>=0.17.6",
+]
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[tool.uv.sources]
+torch = { index = "pytorch-cpu" }
+
+[project.scripts]
+nflb-bot = "nflb.channels.telegram:main"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]
