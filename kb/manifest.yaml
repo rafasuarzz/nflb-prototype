@@ -1,64 +1,73 @@
 # Manifiesto de la base de conocimiento.
 #
-# Cada fuente se descarga en kb/sources/<archivo> y la procesa scripts/ingest.py.
+# Cada fuente está descargada en kb/sources/<archivo> y la procesa scripts/ingest.py.
 # REGLA: solo entran fuentes oficiales. Rafa revisa cada una (verificada_por_rafa: true)
-# antes de usarla en la evaluación. validado_por_servicios_sociales queda en false en el
-# prototipo; lo cambiará Servicios Sociales en el piloto tras revisar el contenido.
+# antes de dar por buenas las cifras de la evaluación. validado_por_servicios_sociales
+# queda en false en el prototipo; lo cambiará Servicios Sociales en el piloto.
 #
-# Estado: CANDIDATAS propuestas el 2026-11-26, pendientes de verificar por Rafa.
+# Campos de ingesta:
+#   formato: boe_html | pdf | web_html  (decide cómo se trocea por estructura)
+#   desde:   (pdf) texto a partir del cual empieza el documento útil
+#   excluir: títulos de sección (regex, sin distinguir mayúsculas) que NO se cargan.
+#            Se excluyen los umbrales de ingresos y patrimonio: el asistente no evalúa
+#            la elegibilidad (principio P2) y tenerlos en el contexto invita a compararlos.
+
+fecha_descarga: "2026-11-26"
 
 fuentes:
-  - id: ord-telde-prestaciones
-    documento: "Ordenanza reguladora de las prestaciones económicas para atender necesidades sociales — Ayuntamiento de Telde"
+  - id: ord-telde
+    documento: "Ordenanza reguladora de las prestaciones económicas de los Servicios Sociales del Ayuntamiento de Telde para atender necesidades sociales (BOP Las Palmas n.º 105, 31/08/2020)"
     ambito: municipal
     url: "https://www.telde.es/wp-content/uploads/2022/07/ordenanzaserviciossociales-1.pdf"
     archivo: ord-telde-prestaciones.pdf
-    fecha_documento: null        # confirmar fecha de la versión vigente (BOP Las Palmas)
+    formato: pdf
+    desde: "ORDENANZA REGULADORA DE LAS"
+    excluir: ["^ANEXO I\\b(?!I|V)", "^PREÁMBULO", "^ÍNDICE"]
+    fecha_documento: "2020-08-31"
     verificada_por_rafa: false
     validado_por_servicios_sociales: false
 
-  - id: telde-prestaciones-web
+  - id: telde-web
     documento: "Prestaciones económicas municipales — web del Ayuntamiento de Telde"
     ambito: municipal
     url: "https://www.telde.es/areas/servicios-sociales-y-solidaridad/servicios-sociales/prestaciones-y-tramites/prestaciones-economicas-municipales/"
     archivo: telde-prestaciones-web.html
-    fecha_documento: null
-    verificada_por_rafa: false
-    validado_por_servicios_sociales: false
-
-  - id: telde-tramites-ss
-    documento: "Trámites presenciales de Servicios Sociales — Ayuntamiento de Telde"
-    ambito: tramite
-    url: "https://www.telde.es/tramites-presenciales/servicios-sociales/"
-    archivo: telde-tramites-ss.html
+    formato: web_html
+    excluir: []
     fecha_documento: null
     verificada_por_rafa: false
     validado_por_servicios_sociales: false
 
   - id: ley-imv
-    documento: "Ley 19/2021, de 20 de diciembre, por la que se establece el ingreso mínimo vital (texto consolidado)"
+    documento: "Ley 19/2021, de 20 de diciembre, por la que se establece el ingreso mínimo vital (texto consolidado, BOE)"
     ambito: estatal
     url: "https://www.boe.es/buscar/act.php?id=BOE-A-2021-21007"
     archivo: ley-imv.html
-    fecha_documento: null        # fecha de la última actualización del consolidado
+    formato: boe_html
+    excluir: ["^Preámbulo"]
+    fecha_documento: "2026-10-03"   # última actualización del consolidado
     verificada_por_rafa: false
     validado_por_servicios_sociales: false
 
-  - id: imv-seg-social
-    documento: "Ingreso Mínimo Vital — información para solicitarlo (Seguridad Social)"
+  - id: imv-facil
+    documento: "Ingreso Mínimo Vital, en lectura fácil — Ministerio de Inclusión, Seguridad Social y Migraciones"
     ambito: estatal
-    url: "https://imv.seg-social.es/"
-    archivo: imv-seg-social.html
+    url: "https://inclusion.gob.es/web/inclusion/ingreso-minimo-vital/que-es"
+    archivo: imv-inclusion.html
+    formato: web_html
+    excluir: ["^¿?Cuáles son los ingresos"]
     fecha_documento: null
     verificada_por_rafa: false
     validado_por_servicios_sociales: false
 
   - id: ley-rcc
-    documento: "Ley 5/2022, de 19 de diciembre, de la Renta Canaria de Ciudadanía (texto consolidado)"
+    documento: "Ley 5/2022, de 19 de diciembre, de la Renta Canaria de Ciudadanía (texto consolidado, BOE)"
     ambito: autonomico
     url: "https://www.boe.es/eli/es-cn/l/2022/12/19/5/con"
     archivo: ley-rcc.html
-    fecha_documento: null
+    formato: boe_html
+    excluir: ["^Preámbulo"]
+    fecha_documento: "2023-02-24"   # última actualización del consolidado
     verificada_por_rafa: false
     validado_por_servicios_sociales: false
 
@@ -67,10 +76,15 @@ fuentes:
     ambito: autonomico
     url: "https://sede.gobiernodecanarias.org/sede/tramites/7441"
     archivo: rcc-sede.html
+    formato: web_html
+    excluir: []
     fecha_documento: null
     verificada_por_rafa: false
     validado_por_servicios_sociales: false
 
-  # PENDIENTE: certificado de empadronamiento en Telde (no he encontrado la ficha oficial
-  # en telde.sedelectronica.es). Sin esta fuente, el asistente dirá "Pregunta en tu Unidad
-  # de Trabajo Social cómo conseguirlo".
+# Descartadas:
+# - imv.seg-social.es: es una aplicación que necesita JavaScript; no devuelve texto.
+# - telde.es/tramites-presenciales/servicios-sociales: solo es una lista de formularios.
+# PENDIENTE: certificado de empadronamiento en Telde (no se ha encontrado la ficha oficial
+# en telde.sedelectronica.es). Sin esta fuente, el asistente dirá "Pregunta en tu Unidad
+# de Trabajo Social cómo conseguirlo".

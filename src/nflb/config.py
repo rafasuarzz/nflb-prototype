@@ -36,7 +36,10 @@ class Settings(BaseSettings):
 
     # RAG
     rag_top_k: int = 6
-    rag_min_score: float = 0.80  # similitud coseno mínima del mejor fragmento (E5)
+    # Similitud coseno mínima del mejor fragmento (E5). Calibrado el 2026-11-26: E5 comprime
+    # las similitudes (0,79-0,91), así que solo filtra lo claramente ajeno. La abstención
+    # fina la hacen el prompt y la verificación de citas (ver README).
+    rag_min_score: float = 0.80
 
     # Conversación y retención
     history_turns: int = 10

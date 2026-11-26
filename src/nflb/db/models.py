@@ -11,6 +11,7 @@ from sqlalchemy import (
     DateTime,
     ForeignKey,
     Integer,
+    LargeBinary,
     String,
     Text,
 )
@@ -78,6 +79,19 @@ class Requirement(Base):
     # Estado por documento: [{"documento": str, "hecho": bool, "instrucciones": str|None}]
     tasks: Mapped[list] = mapped_column(JSON, default=list)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class KBChunk(Base):
+    """Fragmento de la base de conocimiento (backend SQLite del VectorStore)."""
+
+    __tablename__ = "kb_chunks"
+
+    id: Mapped[str] = mapped_column(String(120), primary_key=True)
+    source_id: Mapped[str] = mapped_column(String(64), index=True)
+    text: Mapped[str] = mapped_column(Text)
+    meta: Mapped[dict] = mapped_column(JSON)
+    content_hash: Mapped[str] = mapped_column(String(64))
+    embedding: Mapped[bytes] = mapped_column(LargeBinary)  # float32, normalizado
 
 
 class Reminder(Base):

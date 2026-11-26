@@ -16,12 +16,14 @@ copy .env.example .env   # y rellena los valores
 uv run nflb-bot
 ```
 
+Ingesta de la KB: `uv run python scripts/ingest.py`
+
 Pruebas: `uv run pytest` · Calidad: `uv run ruff check src tests`
 
 ## Estado por hitos
 
 - [x] H1 — Esqueleto, configuración, BD, `/start` con consentimiento, `/ayuda`, `/borrar`
-- [ ] H2 — Ingesta de la KB + recuperación híbrida
+- [x] H2 — Ingesta de la KB (6 fuentes oficiales, 383 fragmentos) + recuperación híbrida
 - [ ] H3 — Consultas informativas con citas + guardarraíles
 - [ ] H4 — Notas de voz
 - [ ] H5 — Resumen previo a la cita
