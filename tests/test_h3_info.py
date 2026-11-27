@@ -133,6 +133,13 @@ def test_clarifying_question_has_no_sources_block():
     assert r.status == "aclaratoria" and "Fuente" not in r.text
 
 
+def test_clarifying_with_cited_info_keeps_sources_and_closing():
+    a = make({"_RouterOut": [route()], "InfoOut": [
+        info("Podrías consultar [ord-telde-art9]. ¿Estás empadronada?", ["ord-telde-art9"], acl=True)]})  # fmt: skip
+    r = a.respond("Necesito ayuda")
+    assert r.status == "ok" and "📄 Fuente" in r.text and r.text.endswith(texts.CIERRE)
+
+
 def test_llm_failure_in_generation_is_safe():
     r = make({"_RouterOut": [route()], "InfoOut": [LLMError("caída")]}).respond("Pregunta")
     assert r.status == "error" and r.text == safety.SAFE_GENERIC

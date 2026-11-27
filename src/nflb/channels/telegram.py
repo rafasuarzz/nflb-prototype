@@ -219,6 +219,7 @@ def main() -> None:
     if not settings.allowed_user_ids:
         log.warning("lista_blanca_vacia", aviso="Rellena ALLOWED_USER_IDS en .env")
     log.info("bot_arrancando", modelo=settings.anthropic_model)
+    get_assistant().warm_up()  # carga E5 y la KB ahora, no en el primer mensaje
     build_application().run_polling(allowed_updates=Update.ALL_TYPES)
 
 

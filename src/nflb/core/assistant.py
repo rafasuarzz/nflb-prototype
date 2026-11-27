@@ -27,6 +27,7 @@ class Reply:
     retrieved: list[str] = field(default_factory=list)
     latency_ms: int = 0
     raw: str = ""
+    attempts: int = 0
 
 
 class Assistant:
@@ -52,6 +53,10 @@ class Assistant:
             self._retriever = HybridRetriever(get_store(), get_embedder())
         return self._retriever
 
+    def warm_up(self) -> None:
+        """Carga el modelo de embeddings y la KB antes del primer mensaje."""
+        self.retriever.retrieve("ayuda")
+
     def respond(self, text: str, history: list[dict] | None = None) -> Reply:
         """Responde sin persistir nada (lo usan la evaluación y handle_text)."""
         t0 = time.perf_counter()
@@ -67,10 +72,11 @@ class Assistant:
         else:
             res = info.answer(self.llm, self.retriever, text, r.consulta_busqueda, history)
             reply = Reply(res.text, "informativa", res.status, res.citations, res.retrieved,
-                          raw=res.raw)  # fmt: skip
+                          raw=res.raw, attempts=res.attempts)  # fmt: skip
         reply.latency_ms = int((time.perf_counter() - t0) * 1000)
         log.info("respuesta", intencion=reply.intent, estado=reply.status,
-                 citas=len(reply.citations), ms=reply.latency_ms)  # fmt: skip
+                 citas=len(reply.citations), intentos=reply.attempts,
+                 ms=reply.latency_ms)  # fmt: skip
         return reply
 
     def handle_text(self, user_hash: str, text: str) -> Reply:

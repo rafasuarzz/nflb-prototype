@@ -109,10 +109,13 @@ def answer(
         probs = _problems(out, allowed)
         if not probs:
             text, ids = render(out, res.items)
-            status = "aclaratoria" if out.es_pregunta_aclaratoria else "ok"
-            if status == "aclaratoria":
+            # Pregunta aclaratoria "pura" (sin información citada): sin fuentes ni cierre.
+            # Si además orienta con datos citados, cuenta como respuesta informativa normal.
+            if out.es_pregunta_aclaratoria and not ids:
                 text = guardrails.mask_pii(guardrails.strip_citations(out.respuesta))
-            return InfoResult(text, status, ids, retrieved, attempt, out.respuesta, issues)
+                return InfoResult(text, "aclaratoria", [], retrieved, attempt, out.respuesta,
+                                  issues)  # fmt: skip
+            return InfoResult(text, "ok", ids, retrieved, attempt, out.respuesta, issues)
         issues += probs
         messages = [
             *messages,

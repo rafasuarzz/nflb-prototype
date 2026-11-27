@@ -398,6 +398,7 @@ def main(argv: list[str] | None = None) -> int:
 
     init_db()
     assistant = Assistant()
+    assistant.warm_up()  # la carga de E5 no cuenta en la latencia
     judge_llm = None if args.no_judge else AnthropicProvider(get_settings().effective_judge_model)
     cases = load_cases(args.only)
     conv = [c for c in cases if c["tipo"] != "requerimiento"]
