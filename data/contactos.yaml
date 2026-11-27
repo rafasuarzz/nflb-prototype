@@ -1,0 +1,32 @@
+# Teléfonos para el bloque fijo de urgencias (sección 7.4).
+# REGLA: solo se muestran los que tienen verificado: true. El 112 siempre se muestra.
+# Rafa: verifica cada número en su fuente oficial y cambia verificado a true.
+
+contactos:
+  - id: emergencias
+    nombre: "Emergencias"
+    telefono: "112"
+    cuando: "Si hay peligro ahora mismo para ti o para otra persona"
+    fuente: "Número europeo de emergencias"
+    verificado: true
+
+  - id: violencia-genero
+    nombre: "Atención a víctimas de violencia de género"
+    telefono: "016"
+    cuando: "Violencia de género (gratis, no deja rastro en la factura)"
+    fuente: "https://violenciagenero.igualdad.gob.es/"   # PENDIENTE de verificar por Rafa
+    verificado: false
+
+  - id: conducta-suicida
+    nombre: "Línea de atención a la conducta suicida"
+    telefono: "024"
+    cuando: "Si piensas en quitarte la vida o temes por alguien"
+    fuente: "https://www.sanidad.gob.es/linea024/"       # PENDIENTE de verificar por Rafa
+    verificado: false
+
+  - id: servicios-sociales-telde
+    nombre: "Servicios Sociales del Ayuntamiento de Telde"
+    telefono: null                                       # PENDIENTE: teléfono verificado
+    cuando: "Para contarles hoy mismo lo que pasa"
+    fuente: null
+    verificado: false

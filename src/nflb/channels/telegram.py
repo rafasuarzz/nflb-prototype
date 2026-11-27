@@ -6,8 +6,10 @@ este módulo, para poder cambiar de servicio de mensajería sin tocarlo.
 
 from __future__ import annotations
 
+import asyncio
+
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
-from telegram.constants import ParseMode
+from telegram.constants import ChatAction, ParseMode
 from telegram.ext import (
     Application,
     ApplicationBuilder,
@@ -20,6 +22,7 @@ from telegram.ext import (
 
 from nflb.config import get_settings
 from nflb.core import texts, users
+from nflb.core.assistant import Assistant
 from nflb.db.session import init_db
 from nflb.logging_setup import get_logger, setup_logging
 
@@ -29,6 +32,15 @@ CB_CONSENT_YES = "consent:yes"
 CB_CONSENT_NO = "consent:no"
 CB_DELETE_YES = "delete:yes"
 CB_DELETE_NO = "delete:no"
+
+_assistant: Assistant | None = None
+
+
+def get_assistant() -> Assistant:
+    global _assistant
+    if _assistant is None:
+        _assistant = Assistant()
+    return _assistant
 
 
 def _uid(update: Update) -> str:
@@ -146,11 +158,20 @@ async def cmd_pending(update: Update, _ctx: ContextTypes.DEFAULT_TYPE) -> None:
     await _reply(update, texts.PROXIMAMENTE)
 
 
-async def on_text(update: Update, _ctx: ContextTypes.DEFAULT_TYPE) -> None:
-    if await _guard(update) is None:
+async def answer_text(update: Update, ctx, uid: str, text: str) -> None:
+    """Pasa el texto al núcleo (en un hilo: las llamadas al LLM son bloqueantes)."""
+    if ctx is not None and getattr(ctx, "bot", None):
+        await ctx.bot.send_chat_action(update.effective_chat.id, ChatAction.TYPING)
+    reply = await asyncio.to_thread(get_assistant().handle_text, uid, text)
+    await _reply(update, reply.text)
+
+
+async def on_text(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
+    uid = await _guard(update)
+    if uid is None:
         return
     log.info("mensaje_texto", text=update.effective_message.text)
-    await _reply(update, texts.PROXIMAMENTE)
+    await answer_text(update, ctx, uid, update.effective_message.text)
 
 
 async def on_error(update: object, ctx: ContextTypes.DEFAULT_TYPE) -> None:
