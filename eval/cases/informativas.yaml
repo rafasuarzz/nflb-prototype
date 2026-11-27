@@ -1,0 +1,94 @@
+# 15 consultas informativas sintéticas (casos inventados, sin datos reales).
+# debe_mencionar: elementos que una buena orientación debería nombrar, SEGÚN LA KB ACTUAL.
+# Los evalúa un juez LLM (y Rafa revisa a mano una muestra).
+
+- id: info-001
+  tipo: informativa
+  entrada: "Soy madre sola con dos niños, me quedé sin trabajo hace un mes y no sé qué ayudas hay"
+  debe_mencionar: ["prestaciones económicas municipales del Ayuntamiento de Telde", "ingreso mínimo vital"]
+  no_debe_contener: ["tienes derecho", "te corresponde"]
+  debe_citar: true
+
+- id: info-002
+  tipo: informativa
+  entrada: "Llevo más de dos años en paro y ya no cobro nada. ¿Hay alguna ayuda para mí?"
+  debe_mencionar: ["renta canaria de ciudadanía", "ingreso mínimo vital"]
+  debe_citar: true
+
+- id: info-003
+  tipo: informativa
+  entrada: "Tengo 78 años, vivo sola con una pensión muy pequeña y necesito unas gafas nuevas"
+  debe_mencionar: ["prestaciones económicas municipales para la salud (gafas, órtesis)"]
+  debe_citar: true
+
+- id: info-004
+  tipo: informativa
+  entrada: "Somos cuatro en casa, el alquiler se lleva casi todo el sueldo y no llegamos a fin de mes"
+  debe_mencionar: ["prestaciones económicas municipales (alojamiento o vivienda)", "ingreso mínimo vital"]
+  debe_citar: true
+
+- id: info-005
+  tipo: informativa
+  entrada: "Me acabo de empadronar en Telde la semana pasada. ¿Puedo pedir ya las ayudas del ayuntamiento?"
+  debe_mencionar: ["la ordenanza pide estar empadronado en Telde (con una antigüedad)"]
+  debe_citar: true
+
+- id: info-006
+  tipo: informativa
+  entrada: "¿Qué papeles me van a pedir para la Renta Canaria de Ciudadanía?"
+  debe_mencionar: ["documento de identidad (DNI, NIE o pasaporte)", "certificado de empadronamiento", "inscripción como demandante de empleo"]
+  debe_citar: true
+
+- id: info-007
+  tipo: informativa
+  entrada: "¿Qué es eso del ingreso mínimo vital? Me lo dijo una vecina"
+  debe_mencionar: ["ayuda del Gobierno de España para personas sin ingresos suficientes", "se pide a la Seguridad Social"]
+  debe_citar: true
+
+- id: info-008
+  tipo: informativa
+  entrada: "¿Dónde y cómo se pide la ayuda de emergencia del Ayuntamiento de Telde?"
+  debe_mencionar: ["registro municipal o sede electrónica del Ayuntamiento de Telde", "solicitud con la documentación"]
+  debe_citar: true
+
+- id: info-009
+  tipo: informativa
+  entrada: "Mi hijo tiene una discapacidad y necesitamos adaptar el baño de casa"
+  debe_mencionar: ["prestaciones complementarias para la habitabilidad o adaptación de la vivienda"]
+  debe_citar: true
+
+- id: info-010
+  tipo: informativa
+  entrada: "Si trabajo unas horas a la semana, ¿puedo pedir igualmente el ingreso mínimo vital?"
+  debe_mencionar: ["se puede trabajar y pedir el ingreso mínimo vital si no se superan los ingresos máximos"]
+  debe_citar: true
+
+- id: info-011
+  tipo: informativa
+  entrada: "Vivo con dos amigas que no son familia. ¿Eso cuenta para el ingreso mínimo vital?"
+  debe_mencionar: ["unidad de convivencia", "certificado de los servicios sociales"]
+  debe_citar: true
+
+- id: info-012
+  tipo: informativa
+  entrada: "¿Tengo que estar apuntada al paro para pedir la renta de ciudadanía?"
+  debe_mencionar: ["inscripción como demandante de empleo en el Servicio Canario de Empleo (con excepciones)"]
+  debe_citar: true
+
+- id: info-013
+  tipo: informativa
+  entrada: "Me han cortado la luz y tengo una factura atrasada que no puedo pagar"
+  debe_mencionar: ["prestaciones económicas municipales para suministros básicos o necesidades básicas"]
+  debe_citar: true
+
+- id: info-014
+  tipo: informativa
+  entrada: "¿En qué época del año se puede pedir la ayuda del ayuntamiento?"
+  debe_mencionar: ["todo el año (del 1 de enero al 31 de diciembre)"]
+  debe_citar: true
+
+- id: info-015
+  tipo: informativa
+  entrada: "Mi hija necesita material escolar y no tenemos dinero para comprarlo"
+  debe_mencionar: ["prestaciones económicas municipales para el acceso a la educación"]
+  debe_citar: true

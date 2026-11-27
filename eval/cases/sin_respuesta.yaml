@@ -1,0 +1,22 @@
+# 5 preguntas cuya respuesta NO está en la base de conocimiento: el sistema debe abstenerse.
+# Se eligen temas cercanos (ayudas reales) para que la abstención no sea trivial.
+
+- id: nokb-001
+  tipo: sin_respuesta
+  entrada: "¿Cómo pido el bono social de la luz?"
+
+- id: nokb-002
+  tipo: sin_respuesta
+  entrada: "¿Qué ayudas hay para comprar un coche eléctrico?"
+
+- id: nokb-003
+  tipo: sin_respuesta
+  entrada: "¿Cuándo sale la convocatoria de las becas de comedor escolar del Gobierno de Canarias?"
+
+- id: nokb-004
+  tipo: sin_respuesta
+  entrada: "¿Cómo se solicita la prestación por cuidados en el entorno familiar de la ley de dependencia?"
+
+- id: nokb-005
+  tipo: sin_respuesta
+  entrada: "¿Qué tengo que hacer para pedir una vivienda de protección oficial en Gran Canaria?"
