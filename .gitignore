@@ -21,3 +21,10 @@ eval/out/
 
 # Documentos internos que no van al repo
 ESPECIFICACION_PROTOTIPO.md
+
+# Audios de prueba (no se suben)
+eval/audio/*.ogg
+eval/audio/*.oga
+eval/audio/*.mp3
+eval/audio/*.wav
+eval/audio/*.m4a
