@@ -44,8 +44,8 @@ Otras: `ANTHROPIC_MODEL` (por defecto `claude-sonnet-5-5`), `JUDGE_MODEL`, `WHIS
 **Pruebas y evaluación**
 
 ```powershell
-uv run pytest -m "not integration"        # 78 pruebas unitarias, sin red
-uv run pytest                             # + integración con el modelo E5 real
+uv run pytest -m "not integration"        # 79 pruebas unitarias, sin red
+uv run pytest                             # + integración (E5 real y cadena de voz): 80 en total
 uv run python -m eval.run                 # evaluación completa → eval/report.md (~5 min, usa la API)
 uv run python -m eval.wer                 # WER sobre las notas de voz de eval/audio/
 uv run ruff check src tests eval scripts
