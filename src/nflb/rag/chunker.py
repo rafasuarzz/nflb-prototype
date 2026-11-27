@@ -71,7 +71,8 @@ def section_key(title: str) -> str:
         kind = {"adicional": "da", "transitoria": "dt", "final": "df", "derogatoria": "dd"}[
             m.group(1).lower()
         ]
-        n = _ORDINALS.get((m.group(2) or "única").lower(), m.group(2) or "")
+        raw = (m.group(2) or "única").lower()
+        n = _ORDINALS.get(raw, slugify(raw, 20))
         return f"{kind}{n}"
     if m := re.match(r"anexo\s+([IVXL]+)\b", t, re.I):
         return f"anexo-{m.group(1).lower()}"

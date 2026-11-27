@@ -64,7 +64,9 @@ def mask_pii(text: str) -> str:
 
 # --- citas -------------------------------------------------------------------
 
-CITE_RX = re.compile(r"\[([a-z0-9][a-z0-9-]{2,119})\]")
+# Cualquier token entre corchetes con aspecto de id (incluye letras con tilde, para que un
+# id mal formado también se detecte y se valide en lugar de colarse en la respuesta).
+CITE_RX = re.compile(r"\[([^\W_][\w-]{2,119})\]")
 
 
 def cited_ids(text: str) -> list[str]:

@@ -1,6 +1,6 @@
 # Informe de ingesta de la base de conocimiento
 
-Fecha: 2026-11-26 14:11
+Fecha: 2026-11-27 10:05
 
 - Documentos procesados: **6**
 - Fragmentos en la base: **383**
@@ -10,7 +10,7 @@ Fecha: 2026-11-26 14:11
 |---|---|---|---|---|---|---|
 | `ord-telde` | municipal | 80 | 0 | 0 | 80 | 0 |
 | `telde-web` | municipal | 15 | 0 | 0 | 15 | 0 |
-| `ley-imv` | estatal | 157 | 0 | 0 | 157 | 0 |
+| `ley-imv` | estatal | 157 | 9 | 0 | 148 | 9 |
 | `imv-facil` | estatal | 11 | 0 | 0 | 11 | 0 |
 | `ley-rcc` | autonomico | 109 | 0 | 0 | 109 | 0 |
 | `rcc-sede` | autonomico | 11 | 0 | 0 | 11 | 0 |

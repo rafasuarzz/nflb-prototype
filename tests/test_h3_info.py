@@ -201,3 +201,15 @@ def test_handle_text_persists_history():
     a = make({"_RouterOut": [route("saludo")]})
     a.handle_text(uid, "hola")
     assert [h["role"] for h in users.get_history(uid)] == ["user", "assistant"]
+
+
+def test_accented_or_malformed_ids_are_caught():
+    assert guardrails.cited_ids("Dato [ley-imv-daduodécima-p1].") == ["ley-imv-daduodécima-p1"]
+    assert guardrails.strip_citations("Dato [ley-imv-daduodécima-p1].") == "Dato."
+    assert guardrails.cited_ids("[importe omitido]") == []
+
+
+def test_section_key_is_ascii_for_unknown_ordinals():
+    from nflb.rag.chunker import section_key
+
+    assert section_key("Disposición adicional duodécima. Transición") == "daduodecima"

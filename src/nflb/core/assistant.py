@@ -28,6 +28,7 @@ class Reply:
     latency_ms: int = 0
     raw: str = ""
     attempts: int = 0
+    by_rules: bool = False
 
 
 class Assistant:
@@ -62,7 +63,7 @@ class Assistant:
         t0 = time.perf_counter()
         r: Route = route(self.llm, text, history)
         if r.intencion == "urgente":
-            reply = Reply(safety.urgent_block(), "urgente", "derivada")
+            reply = Reply(safety.urgent_block(), "urgente", "derivada", by_rules=r.por_reglas)
         elif r.intencion == "estado_expediente":
             reply = Reply(safety.EXPEDIENTE, "estado_expediente")
         elif r.intencion == "saludo":

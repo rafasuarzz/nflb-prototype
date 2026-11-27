@@ -121,7 +121,7 @@ def run_conversational(assistant, case: dict, judge_llm) -> Result:
         return r
     r.text, r.intent, r.status = reply.text, reply.intent, reply.status
     r.citations, r.latency_ms = reply.citations, reply.latency_ms
-    r.extra["por_reglas"] = reply.intent == "urgente" and reply.status == "derivada"
+    r.extra["por_reglas"] = reply.by_rules
     r.regex_hits = guardrails.find_forbidden(reply.text) + [
         p for p in case.get("no_debe_contener", []) if p.lower() in reply.text.lower()
     ]

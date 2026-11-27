@@ -1,0 +1,52 @@
+# 5 requerimientos sintéticos (generados por scripts/make_synthetic_requirements.py)
+- id: req-001
+  tipo: requerimiento
+  imagen: eval/requirements/req-001.png
+  esperado:
+    ilegible: false
+    fecha_notificacion: '2026-11-16'
+    plazo_dias_habiles: 10
+    documentos:
+    - Certificado de empadronamiento colectivo
+    - Libro de familia
+    - Últimas tres nóminas o certificado de prestaciones del SEPE
+- id: req-002
+  tipo: requerimiento
+  imagen: eval/requirements/req-002.png
+  esperado:
+    ilegible: false
+    fecha_notificacion: '2026-11-03'
+    plazo_dias_habiles: 10
+    documentos:
+    - Certificado de inscripción como demandante de empleo
+    - Anexo II - Miembros de la unidad de convivencia firmado
+    - Certificado bancario de titularidad de la cuenta
+- id: req-003
+  tipo: requerimiento
+  imagen: eval/requirements/req-003.png
+  esperado:
+    ilegible: false
+    fecha_notificacion: '2026-11-20'
+    plazo_dias_habiles: 10
+    documentos:
+    - Certificado de empadronamiento histórico
+    - Sentencia de divorcio o convenio regulador
+    - Declaración de la renta del último ejercicio
+- id: req-004
+  tipo: requerimiento
+  imagen: eval/requirements/req-004.png
+  esperado:
+    ilegible: true
+    fecha_notificacion: null
+    plazo_dias_habiles: null
+    documentos: []
+- id: req-005
+  tipo: requerimiento
+  imagen: eval/requirements/req-005.png
+  esperado:
+    ilegible: false
+    fecha_notificacion: null
+    plazo_dias_habiles: 10
+    documentos:
+    - Informe médico actualizado
+    - Dos presupuestos del gasto solicitado
