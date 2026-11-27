@@ -7,6 +7,9 @@ este módulo, para poder cambiar de servicio de mensajería sin tocarlo.
 from __future__ import annotations
 
 import asyncio
+import tempfile
+from datetime import UTC, date, datetime, timedelta
+from pathlib import Path
 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.constants import ChatAction, ParseMode
@@ -21,10 +24,12 @@ from telegram.ext import (
 )
 
 from nflb.config import get_settings
-from nflb.core import texts, users
+from nflb.core import records, requirement, summary, texts, users
 from nflb.core.assistant import Assistant
 from nflb.db.session import init_db
+from nflb.llm.base import LLMError
 from nflb.logging_setup import get_logger, setup_logging
+from nflb.pdf.summary_pdf import render_pdf
 
 log = get_logger("nflb.telegram")
 
@@ -152,10 +157,252 @@ def _cancel_user_jobs(ctx: ContextTypes.DEFAULT_TYPE, uid: str) -> None:
             job.schedule_removal()
 
 
-async def cmd_pending(update: Update, _ctx: ContextTypes.DEFAULT_TYPE) -> None:
+def _kb(*rows) -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        [[InlineKeyboardButton(t, callback_data=d) for t, d in row] for row in rows]
+    )
+
+
+# --- /resumen (H5) ---
+
+CB_SUM_OK = "sum:ok"
+CB_SUM_FIX = "sum:fix"
+SUM_BUTTONS = (
+    [("✅ Está bien, hazme el PDF", CB_SUM_OK)],
+    [("✏️ Quiero corregir algo", CB_SUM_FIX)],
+)
+
+
+async def cmd_resumen(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
+    uid = await _guard(update)
+    if uid is None:
+        return
+    history = users.get_history(uid)
+    if not any(h["role"] == "user" for h in history):
+        await _reply(update, "Primero cuéntame un poco tu situación y luego preparo el resumen.")
+        return
+    await ctx.bot.send_chat_action(update.effective_chat.id, ChatAction.TYPING)
+    try:
+        ficha = await asyncio.to_thread(summary.build_ficha, get_assistant().llm, history)
+    except LLMError:
+        await _reply(update, "Ahora no puedo preparar el resumen. Inténtalo en un rato.")
+        return
+    if summary.is_empty(ficha):
+        await _reply(
+            update,
+            "Todavía no sé lo suficiente para el resumen. Cuéntame quién vive en casa "
+            "y qué necesitas.",
+        )
+        return
+    ctx.user_data["ficha"] = ficha.model_dump()
+    ctx.user_data.pop("fixing_summary", None)
+    await _reply(update, summary.ficha_as_text(ficha), _kb(*SUM_BUTTONS))
+
+
+async def on_summary(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
+    query = update.callback_query
+    await query.answer()
+    if not _allowed(update) or "ficha" not in ctx.user_data:
+        return
+    uid = _uid(update)
+    await query.edit_message_reply_markup(None)
+    if query.data == CB_SUM_FIX:
+        ctx.user_data["fixing_summary"] = True
+        await _reply(update, "Dime qué quieres cambiar (por ejemplo: «somos 3 en casa, no 4»).")
+        return
+    ficha = summary.Ficha.model_validate(ctx.user_data.pop("ficha"))
+    path = users.user_files_dir(uid) / f"resumen-{ficha.fecha_generacion}.pdf"
+    await asyncio.to_thread(render_pdf, ficha, path)
+    records.save_summary(uid, ficha.model_dump(), True, str(path))
+    with path.open("rb") as f:
+        await update.effective_message.reply_document(
+            f,
+            filename=path.name,
+            caption="Aquí tienes tu resumen. Tú decides si lo enseñas en la cita.",
+        )
+
+
+async def _fix_summary(update: Update, ctx, text: str) -> None:
+    ficha = summary.Ficha.model_validate(ctx.user_data["ficha"])
+    try:
+        ficha = await asyncio.to_thread(summary.apply_corrections, get_assistant().llm, ficha, text)
+    except LLMError:
+        await _reply(update, "No he podido aplicar el cambio. Prueba otra vez.")
+        return
+    ctx.user_data["ficha"] = ficha.model_dump()
+    ctx.user_data.pop("fixing_summary", None)
+    await _reply(update, summary.ficha_as_text(ficha), _kb(*SUM_BUTTONS))
+
+
+# --- Requerimientos (H6) ---
+
+CB_REQ_OK = "req:ok"
+CB_REQ_NO = "req:no"
+
+
+async def cmd_requerimiento(update: Update, _ctx: ContextTypes.DEFAULT_TYPE) -> None:
     if await _guard(update) is None:
         return
-    await _reply(update, texts.PROXIMAMENTE)
+    await _reply(update, requirement.HOW_TO)
+
+
+async def on_file(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
+    uid = await _guard(update)
+    if uid is None:
+        return
+    msg = update.effective_message
+    if msg.photo:
+        tg_file, mime = await msg.photo[-1].get_file(), "image/jpeg"
+    elif msg.document and msg.document.mime_type in ("application/pdf", "image/jpeg", "image/png"):
+        tg_file, mime = await msg.document.get_file(), msg.document.mime_type
+    else:
+        await _reply(update, "Ese tipo de archivo no lo puedo leer. Mándame una foto o un PDF.")
+        return
+    await ctx.bot.send_chat_action(update.effective_chat.id, ChatAction.TYPING)
+    # La imagen solo vive en memoria durante la extracción: no se guarda en disco.
+    data = bytes(await tg_file.download_as_bytearray())
+    llm = get_assistant().llm
+    try:
+        x = await asyncio.to_thread(requirement.extract, llm, data, mime)
+    except LLMError:
+        await _reply(update, "Ahora no puedo leer la carta. Inténtalo en un rato.")
+        return
+    finally:
+        del data
+    log.info("requerimiento_extraido", docs=len(x.documentos_requeridos),
+             ilegible=x.texto_no_legible)  # fmt: skip
+    if requirement.needs_new_photo(x):
+        await _reply(update, requirement.NEW_PHOTO)
+        return
+    docs = [d.documento for d in x.documentos_requeridos]
+    helps = await asyncio.to_thread(
+        requirement.instructions_for, llm, get_assistant().retriever, docs
+    )
+    tasks = requirement.tasks_from(x, helps)
+    deadline = requirement.compute_deadline(x)
+    ctx.user_data["req"] = {
+        "x": x.model_dump(),
+        "tasks": tasks,
+        "deadline": deadline.isoformat() if deadline else None,
+    }
+    await _reply(
+        update,
+        requirement.confirmation_text(x, tasks, deadline),
+        _kb([("✅ Está bien", CB_REQ_OK), ("❌ No coincide", CB_REQ_NO)]),
+    )
+
+
+async def on_requirement(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
+    query = update.callback_query
+    await query.answer()
+    if not _allowed(update) or "req" not in ctx.user_data:
+        return
+    await query.edit_message_reply_markup(None)
+    pending = ctx.user_data.pop("req")
+    if query.data == CB_REQ_NO:
+        await _reply(update, "Vale, no guardo nada. Mándame otra foto más clara de la carta.")
+        return
+    uid = _uid(update)
+    deadline = date.fromisoformat(pending["deadline"]) if pending["deadline"] else None
+    req_id = records.save_requirement(uid, pending["x"], pending["tasks"], deadline)
+    msg = "Guardado. Escribe /tareas para ver la lista y /hecho <número> al conseguir cada papel."
+    notified = pending["x"].get("fecha_notificacion")
+    if deadline and notified:
+        rows = records.plan_reminders(uid, req_id, date.fromisoformat(notified), deadline)
+        for r in rows:
+            schedule_reminder(ctx.job_queue, r.id, uid, r.when)
+        if rows:
+            msg += f"\n\n⏰ Te avisaré {len(rows)} veces antes del {deadline:%d/%m/%Y}."
+    await _reply(update, msg)
+
+
+async def cmd_tareas(update: Update, _ctx: ContextTypes.DEFAULT_TYPE) -> None:
+    uid = await _guard(update)
+    if uid is None:
+        return
+    req = records.latest_requirement(uid)
+    if req is None:
+        await _reply(update, "No tengo ninguna lista todavía.\n\n" + requirement.HOW_TO)
+        return
+    dl = f"\n\n📅 Fecha límite estimada: {req.deadline:%d/%m/%Y}" if req.deadline else ""
+    await _reply(update, "*Tus papeles:*\n" + requirement.tasks_text(req.tasks) + dl)
+
+
+async def cmd_hecho(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
+    uid = await _guard(update)
+    if uid is None:
+        return
+    try:
+        n = int(ctx.args[0])
+    except (IndexError, ValueError, TypeError):
+        await _reply(update, "Escribe /hecho y el número del papel, por ejemplo: /hecho 2")
+        return
+    ok, tasks = records.mark_done(uid, n)
+    if not ok:
+        await _reply(update, "No encuentro ese número. Mira la lista con /tareas.")
+        return
+    left = sum(not t["hecho"] for t in tasks)
+    extra = (
+        "¡Ya lo tienes todo! Entrégalo antes de la fecha límite."
+        if left == 0
+        else f"Te quedan {left}."
+    )
+    await _reply(update, f"✅ Marcado: {tasks[n - 1]['documento']}. {extra}")
+
+
+def schedule_reminder(job_queue, reminder_id: int, uid: str, when) -> None:
+    if job_queue is None:
+        return
+    job_queue.run_once(_send_reminder, when=when, data=reminder_id, name=f"rem:{uid}:{reminder_id}")
+
+
+async def _send_reminder(ctx: ContextTypes.DEFAULT_TYPE) -> None:
+    found = records.reminder_context(ctx.job.data)
+    if not found:
+        return
+    r, req, chat_id = found
+    text = requirement.reminder_message(r.kind, req.tasks, req.deadline, date.today())
+    if text and chat_id:
+        await ctx.bot.send_message(chat_id, text)
+    records.mark_sent(r.id)
+
+
+def restore_reminders(job_queue) -> int:
+    """Al arrancar, vuelve a programar los recordatorios guardados en la BD."""
+    n = 0
+    now = datetime.now(UTC)
+    for r, _req, _chat in records.pending_reminders():
+        when = r.when if r.when.tzinfo else r.when.replace(tzinfo=UTC)
+        if when < now - timedelta(hours=12):  # demasiado antiguo: se descarta
+            records.mark_sent(r.id)
+            continue
+        schedule_reminder(job_queue, r.id, r.user_id, max(when, now + timedelta(seconds=5)))
+        n += 1
+    return n
+
+
+# --- Notas de voz (H4) ---
+
+
+async def on_voice(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
+    uid = await _guard(update)
+    if uid is None:
+        return
+    from nflb.stt.whisper import transcribe
+
+    await ctx.bot.send_chat_action(update.effective_chat.id, ChatAction.TYPING)
+    voice = update.effective_message.voice or update.effective_message.audio
+    tg_file = await voice.get_file()
+    with tempfile.TemporaryDirectory() as tmp:  # el audio se borra al salir del bloque
+        path = Path(tmp) / "nota.ogg"
+        await tg_file.download_to_drive(path)
+        text = await asyncio.to_thread(transcribe, path)
+    log.info("voz_transcrita", transcript=text, chars=len(text))
+    if not text:
+        await _reply(update, "No he entendido la nota de voz. ¿Me la repites o me lo escribes?")
+        return
+    await _reply(update, f"🎙️ He entendido: «{text}»\n_Si no es eso, escríbemelo y lo corrijo._")
+    await answer_text(update, ctx, uid, text)
 
 
 async def answer_text(update: Update, ctx, uid: str, text: str) -> None:
@@ -171,6 +418,9 @@ async def on_text(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
     if uid is None:
         return
     log.info("mensaje_texto", text=update.effective_message.text)
+    if ctx is not None and ctx.user_data.get("fixing_summary"):
+        await _fix_summary(update, ctx, update.effective_message.text)
+        return
     await answer_text(update, ctx, uid, update.effective_message.text)
 
 
@@ -201,14 +451,21 @@ def build_application() -> Application:
     app.add_handler(CommandHandler("ayuda", cmd_ayuda))
     app.add_handler(CommandHandler("help", cmd_ayuda))
     app.add_handler(CommandHandler("borrar", cmd_borrar))
-    for name in ("resumen", "requerimiento", "tareas", "hecho"):
-        app.add_handler(CommandHandler(name, cmd_pending))
+    app.add_handler(CommandHandler("resumen", cmd_resumen))
+    app.add_handler(CommandHandler("requerimiento", cmd_requerimiento))
+    app.add_handler(CommandHandler("tareas", cmd_tareas))
+    app.add_handler(CommandHandler("hecho", cmd_hecho))
     app.add_handler(CallbackQueryHandler(on_consent, pattern=r"^consent:"))
     app.add_handler(CallbackQueryHandler(on_delete, pattern=r"^delete:"))
+    app.add_handler(CallbackQueryHandler(on_summary, pattern=r"^sum:"))
+    app.add_handler(CallbackQueryHandler(on_requirement, pattern=r"^req:"))
+    app.add_handler(MessageHandler(filters.PHOTO | filters.Document.ALL, on_file))
+    app.add_handler(MessageHandler(filters.VOICE | filters.AUDIO, on_voice))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, on_text))
     app.add_error_handler(on_error)
 
     app.job_queue.run_repeating(_purge_job, interval=6 * 3600, first=10, name="purge")
+    log.info("recordatorios_restaurados", n=restore_reminders(app.job_queue))
     return app
 
 
