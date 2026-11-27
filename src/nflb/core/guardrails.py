@@ -31,6 +31,16 @@ FORBIDDEN_PATTERNS = [
     r"\bte\s+(?:la\s+)?aprobar(?:án|an)\b",
     r"\bcalific(?:as|arías|arias)\s+para\b",
     r"\beres\s+elegible\b",
+    # Inglés (modo demostración, BOT_LANGUAGE=en). También en negativo.
+    r"\byou(?:'re|\s+are|'d\s+be|\s+would\s+be)\s+(?:not\s+)?(?:entitled|eligible)\b",
+    r"\byou\s+(?:do\s+not\s+|don'?t\s+|would\s+|will\s+)?qualify\b",
+    r"\byou\s+(?:do\s+not\s+|don'?t\s+)?meet\s+(?:all\s+)?(?:the\s+)?(?:requirements|criteria)\b",
+    r"\byou\s+(?:have|'ve\s+got)\s+(?:the\s+|a\s+)?right\s+to\s+(?:receive|get|claim|the)\b",
+    r"\byou(?:'ll|\s+will)\s+(?:be\s+granted|be\s+awarded|be\s+approved)\b",
+    r"\byou(?:'ll|\s+will)\s+(?:get|receive)\s+(?:it|the\s+(?:benefit|aid|help|payment|allowance|income))\b",
+    r"\b(?:they|it)(?:'ll|\s+will)\s+(?:grant|give|award|approve)\s+(?:you|it)\b",
+    r"\byou\s+can\s+(?:collect|receive)\s+(?:it|the\s+(?:benefit|aid|payment|allowance|income|money))\b",
+    r"\byou(?:'re|\s+are)\s+(?:a\s+)?beneficiary\b",
 ]
 _FORBIDDEN = [re.compile(p, re.I) for p in FORBIDDEN_PATTERNS]
 

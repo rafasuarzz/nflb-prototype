@@ -15,9 +15,12 @@ from typing import Literal
 from pydantic import BaseModel, Field
 
 from nflb.core import deadlines, guardrails
+from nflb.i18n import llm_language_rule
+from nflb.i18n import t as _t
 from nflb.llm.base import LLMProvider
 
-ASK_UTS = "Pregunta en tu Unidad de Trabajo Social cómo conseguirlo."
+ASK_UTS = _t("Pregunta en tu Unidad de Trabajo Social cómo conseguirlo.",
+            "Ask your Social Work Unit (Unidad de Trabajo Social) how to get it.")  # fmt: skip
 
 
 class DocRequerido(BaseModel):
@@ -60,7 +63,7 @@ def extract(llm: LLMProvider, data: bytes, mime: str) -> Extraccion:
         file_part(data, mime),
         {"type": "text", "text": "Extrae los datos de este requerimiento."},
     ]}]  # fmt: skip
-    out = llm.structured(EXTRACT_SYSTEM, msg, Extraccion, max_tokens=3000)
+    out = llm.structured(EXTRACT_SYSTEM + llm_language_rule(), msg, Extraccion, max_tokens=3000)
     for d in out.documentos_requeridos:
         d.documento = guardrails.mask_pii(d.documento)
         d.detalle = guardrails.mask_pii(d.detalle) if d.detalle else None
@@ -122,7 +125,7 @@ def instructions_for(llm: LLMProvider, retriever, docs: list[str]) -> list[dict]
     numbered = "\n".join(f"{i}. {d}" for i, d in enumerate(docs, 1))
     msg = f"{build_context(items)}\n\n<documentos>\n{numbered}\n</documentos>"
     try:
-        out = llm.structured(HELP_SYSTEM, [{"role": "user", "content": msg}], _HelpOut,
+        out = llm.structured(HELP_SYSTEM + llm_language_rule(), [{"role": "user", "content": msg}], _HelpOut,
                              max_tokens=2000)  # fmt: skip
     except Exception:
         return default
@@ -155,63 +158,102 @@ def tasks_from(x: Extraccion, helps: list[dict]) -> list[dict]:
 
 def tasks_text(tasks: list[dict]) -> str:
     lines = []
-    for i, t in enumerate(tasks, 1):
-        mark = "✅" if t.get("hecho") else "⬜"
-        dud = " _(no se lee bien, compruébalo)_" if t.get("confianza") == "baja" else ""
-        lines.append(f"{mark} *{i}. {t['documento']}*{dud}")
-        if t.get("detalle"):
-            lines.append(f"    {t['detalle']}")
-        lines.append(f"    👉 {t.get('instrucciones') or ASK_UTS}")
-        if t.get("fuente"):
-            lines.append(f"    📄 Fuente: {t['fuente']}")
+    for i, task in enumerate(tasks, 1):
+        mark = "✅" if task.get("hecho") else "⬜"
+        dud = (_t(" _(no se lee bien, compruébalo)_", " _(hard to read, please check)_")
+               if task.get("confianza") == "baja" else "")  # fmt: skip
+        lines.append(f"{mark} *{i}. {task['documento']}*{dud}")
+        if task.get("detalle"):
+            lines.append(f"    {task['detalle']}")
+        lines.append(f"    👉 {task.get('instrucciones') or ASK_UTS}")
+        if task.get("fuente"):
+            lines.append(f"    📄 {_t('Fuente', 'Source')}: {task['fuente']}")
     return "\n".join(lines)
 
 
 def deadline_text(x: Extraccion, deadline: date | None) -> str:
     if deadline:
-        warn = "" if deadlines.holidays_verified() else " (festivos locales sin verificar)"
-        return (f"📅 *Fecha límite estimada: {deadline:%d/%m/%Y}*{warn}. Cuenta "
-                f"{x.plazo_dias_habiles} días hábiles desde el día siguiente a "
-                f"{date.fromisoformat(x.fecha_notificacion):%d/%m/%Y}. "
-                "Confírmala en tu Unidad de Trabajo Social o en el organismo que te escribe.")  # fmt: skip
+        notified = date.fromisoformat(x.fecha_notificacion)
+        if deadlines.holidays_verified():
+            warn = ""
+        else:
+            warn = _t(" (festivos locales sin verificar)", " (local holidays not yet verified)")
+        return _t(
+            f"📅 *Fecha límite estimada: {deadline:%d/%m/%Y}*{warn}. Cuenta "
+            f"{x.plazo_dias_habiles} días hábiles desde el día siguiente a "
+            f"{notified:%d/%m/%Y}. "
+            "Confírmala en tu Unidad de Trabajo Social o en el organismo que te escribe.",
+            f"📅 *Estimated deadline: {deadline:%d/%m/%Y}*{warn}. It counts "
+            f"{x.plazo_dias_habiles} working days from the day after {notified:%d/%m/%Y}. "
+            "Please confirm it with your Social Work Unit or the office that wrote to you.",
+        )
     if not x.fecha_notificacion:
-        return ("📅 No veo en la carta la fecha de notificación, así que no puedo estimar la "
-                "fecha límite. Mira el sobre o el justificante de notificación, y pregúntalo "
-                "cuanto antes.")  # fmt: skip
-    return ("📅 No veo en la carta cuántos días tienes. Pregunta el plazo cuanto antes en tu "
-            "Unidad de Trabajo Social.")  # fmt: skip
+        return _t(
+            "📅 No veo en la carta la fecha de notificación, así que no puedo estimar la "
+            "fecha límite. Mira el sobre o el justificante de notificación, y pregúntalo "
+            "cuanto antes.",
+            "📅 I can't see the notification date in the letter, so I can't estimate the "
+            "deadline. Check the envelope or the delivery receipt, and ask as soon as possible.",
+        )
+    return _t(
+        "📅 No veo en la carta cuántos días tienes. Pregunta el plazo cuanto antes en tu "
+        "Unidad de Trabajo Social.",
+        "📅 I can't see in the letter how many days you have. Ask your Social Work Unit "
+        "about the deadline as soon as possible.",
+    )
 
 
 def confirmation_text(x: Extraccion, tasks: list[dict], deadline: date | None) -> str:
-    org = f"*De:* {x.organismo_emisor}\n" if x.organismo_emisor else ""
-    via = f"\n📬 *Cómo entregarlo:* {x.via_de_entrega}" if x.via_de_entrega else ""
-    return (f"📨 *He leído tu carta:*\n{org}\n*Te piden estos papeles:*\n{tasks_text(tasks)}\n\n"
-            f"{deadline_text(x, deadline)}{via}\n\n"
-            "¿Está bien? Si algo no coincide con la carta, dímelo o mándame otra foto.")  # fmt: skip
+    org = f"*{_t('De', 'From')}:* {x.organismo_emisor}\n" if x.organismo_emisor else ""
+    via = (f"\n📬 *{_t('Cómo entregarlo', 'How to hand it in')}:* {x.via_de_entrega}"
+           if x.via_de_entrega else "")  # fmt: skip
+    return (f"📨 *{_t('He leído tu carta', 'I have read your letter')}:*\n{org}\n"
+            f"*{_t('Te piden estos papeles', 'They are asking you for these documents')}:*\n"
+            f"{tasks_text(tasks)}\n\n{deadline_text(x, deadline)}{via}\n\n"
+            + _t("¿Está bien? Si algo no coincide con la carta, dímelo o mándame otra foto.",
+                 "Is this right? If anything doesn't match the letter, tell me or send me "
+                 "another photo."))  # fmt: skip
 
 
-NEW_PHOTO = (
+NEW_PHOTO = _t(
     "No consigo leer bien la carta y no quiero inventarme nada. ¿Me mandas otra foto? "
-    "Consejos: con buena luz, la carta entera y plana, sin sombras y sin mover el móvil."
+    "Consejos: con buena luz, la carta entera y plana, sin sombras y sin mover el móvil.",
+    "I can't read the letter properly and I don't want to make anything up. Could you send "
+    "me another photo? Tips: good light, the whole letter flat, no shadows, hold the phone "
+    "still.",
 )
 
-HOW_TO = (
+HOW_TO = _t(
     "📸 Mándame una *foto* de la carta en la que te piden papeles (o el PDF si te llegó por "
     "internet). Mejor con buena luz, la hoja entera y plana.\n\n"
     "Te haré una lista de lo que tienes que conseguir, te diré la fecha límite estimada y te "
-    "recordaré el plazo. La foto se borra en cuanto la leo."
+    "recordaré el plazo. La foto se borra en cuanto la leo.",
+    "📸 Send me a *photo* of the letter asking you for documents (or the PDF if you got it "
+    "online). Ideally in good light, with the whole page flat.\n\n"
+    "I'll make a list of what you need to get, tell you the estimated deadline and remind "
+    "you before it. The photo is deleted as soon as I've read it.",
 )
 
 
 def reminder_message(kind: str, tasks: list[dict], deadline: date, today: date) -> str:
     left = deadlines.business_days_between(today, deadline)
-    pending = [t["documento"] for t in tasks if not t.get("hecho")]
+    pending = [task["documento"] for task in tasks if not task.get("hecho")]
     if not pending:
         return ""
-    head = {"mitad": "⏰ Vas por la mitad del plazo.",
-            "dos_dias": "⏰ Quedan 2 días hábiles.",
-            "vispera": "⏰ Mañana es el último día (estimado)."}.get(kind, "⏰ Recordatorio.")  # fmt: skip
+    heads = {
+        "mitad": _t("⏰ Vas por la mitad del plazo.", "⏰ You're halfway through the deadline."),
+        "dos_dias": _t("⏰ Quedan 2 días hábiles.", "⏰ 2 working days left."),
+        "vispera": _t("⏰ Mañana es el último día (estimado).",
+                      "⏰ Tomorrow is the last day (estimated)."),
+    }  # fmt: skip
+    head = heads.get(kind, _t("⏰ Recordatorio.", "⏰ Reminder."))
     items = "\n".join(f"• {p}" for p in pending)
-    return (f"{head} Fecha límite estimada: {deadline:%d/%m/%Y} ({left} días hábiles).\n\n"
-            f"Te falta:\n{items}\n\nCuando consigas uno, escribe /hecho y su número. "
-            "Si no llegas a tiempo, avisa hoy en tu Unidad de Trabajo Social.")  # fmt: skip
+    return _t(
+        f"{head} Fecha límite estimada: {deadline:%d/%m/%Y} ({left} días hábiles).\n\n"
+        f"Te falta:\n{items}\n\nCuando consigas uno, escribe /hecho y su número. "
+        "Si no llegas a tiempo, avisa hoy en tu Unidad de Trabajo Social.",
+        f"{head} Estimated deadline: {deadline:%d/%m/%Y} ({left} working days).\n\n"
+        f"Still missing:\n{items}\n\nWhen you get one, type /done and its number. "
+        "If you can't make it in time, tell your Social Work Unit today.",
+    )
+

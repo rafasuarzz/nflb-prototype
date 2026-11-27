@@ -27,6 +27,7 @@ from nflb.config import get_settings
 from nflb.core import records, requirement, summary, texts, users
 from nflb.core.assistant import Assistant
 from nflb.db.session import init_db
+from nflb.i18n import t
 from nflb.llm.base import LLMError
 from nflb.logging_setup import get_logger, setup_logging
 from nflb.pdf.summary_pdf import render_pdf
@@ -89,8 +90,8 @@ async def cmd_start(update: Update, _ctx: ContextTypes.DEFAULT_TYPE) -> None:
     markup = InlineKeyboardMarkup(
         [
             [
-                InlineKeyboardButton("✅ Acepto", callback_data=CB_CONSENT_YES),
-                InlineKeyboardButton("❌ No acepto", callback_data=CB_CONSENT_NO),
+                InlineKeyboardButton(t("✅ Acepto", "✅ I accept"), callback_data=CB_CONSENT_YES),
+                InlineKeyboardButton(t("❌ No acepto", "❌ I don't accept"), callback_data=CB_CONSENT_NO),
             ]
         ]
     )
@@ -125,8 +126,9 @@ async def cmd_borrar(update: Update, _ctx: ContextTypes.DEFAULT_TYPE) -> None:
     markup = InlineKeyboardMarkup(
         [
             [
-                InlineKeyboardButton("🗑️ Sí, borrar todo", callback_data=CB_DELETE_YES),
-                InlineKeyboardButton("Cancelar", callback_data=CB_DELETE_NO),
+                InlineKeyboardButton(t("🗑️ Sí, borrar todo", "🗑️ Yes, delete everything"),
+                                     callback_data=CB_DELETE_YES),
+                InlineKeyboardButton(t("Cancelar", "Cancel"), callback_data=CB_DELETE_NO),
             ]
         ]
     )
@@ -168,8 +170,8 @@ def _kb(*rows) -> InlineKeyboardMarkup:
 CB_SUM_OK = "sum:ok"
 CB_SUM_FIX = "sum:fix"
 SUM_BUTTONS = (
-    [("✅ Está bien, hazme el PDF", CB_SUM_OK)],
-    [("✏️ Quiero corregir algo", CB_SUM_FIX)],
+    [(t("✅ Está bien, hazme el PDF", "✅ That's right, make the PDF"), CB_SUM_OK)],
+    [(t("✏️ Quiero corregir algo", "✏️ I want to correct something"), CB_SUM_FIX)],
 )
 
 
@@ -179,19 +181,23 @@ async def cmd_resumen(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
         return
     history = users.get_history(uid)
     if not any(h["role"] == "user" for h in history):
-        await _reply(update, "Primero cuéntame un poco tu situación y luego preparo el resumen.")
+        await _reply(update, t("Primero cuéntame un poco tu situación y luego preparo el resumen.",
+                             "First tell me a bit about your situation, then I'll prepare the summary."))
         return
     await ctx.bot.send_chat_action(update.effective_chat.id, ChatAction.TYPING)
     try:
         ficha = await asyncio.to_thread(summary.build_ficha, get_assistant().llm, history)
     except LLMError:
-        await _reply(update, "Ahora no puedo preparar el resumen. Inténtalo en un rato.")
+        await _reply(update, t("Ahora no puedo preparar el resumen. Inténtalo en un rato.",
+                             "I can't prepare the summary right now. Try again shortly."))
         return
     if summary.is_empty(ficha):
         await _reply(
             update,
-            "Todavía no sé lo suficiente para el resumen. Cuéntame quién vive en casa "
-            "y qué necesitas.",
+            t("Todavía no sé lo suficiente para el resumen. Cuéntame quién vive en casa "
+              "y qué necesitas.",
+              "I don't know enough for the summary yet. Tell me who lives at home "
+              "and what you need."),
         )
         return
     ctx.user_data["ficha"] = ficha.model_dump()
@@ -208,17 +214,19 @@ async def on_summary(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
     await query.edit_message_reply_markup(None)
     if query.data == CB_SUM_FIX:
         ctx.user_data["fixing_summary"] = True
-        await _reply(update, "Dime qué quieres cambiar (por ejemplo: «somos 3 en casa, no 4»).")
+        await _reply(update, t("Dime qué quieres cambiar (por ejemplo: «somos 3 en casa, no 4»).",
+                               "Tell me what you want to change (for example: \"there are 3 of us at home, not 4\")."))
         return
     ficha = summary.Ficha.model_validate(ctx.user_data.pop("ficha"))
-    path = users.user_files_dir(uid) / f"resumen-{ficha.fecha_generacion}.pdf"
+    path = users.user_files_dir(uid) / f"{t('resumen', 'summary')}-{ficha.fecha_generacion}.pdf"
     await asyncio.to_thread(render_pdf, ficha, path)
     records.save_summary(uid, ficha.model_dump(), True, str(path))
     with path.open("rb") as f:
         await update.effective_message.reply_document(
             f,
             filename=path.name,
-            caption="Aquí tienes tu resumen. Tú decides si lo enseñas en la cita.",
+            caption=t("Aquí tienes tu resumen. Tú decides si lo enseñas en la cita.",
+                      "Here is your summary. You decide whether to show it at the appointment."),
         )
 
 
@@ -227,7 +235,8 @@ async def _fix_summary(update: Update, ctx, text: str) -> None:
     try:
         ficha = await asyncio.to_thread(summary.apply_corrections, get_assistant().llm, ficha, text)
     except LLMError:
-        await _reply(update, "No he podido aplicar el cambio. Prueba otra vez.")
+        await _reply(update, t("No he podido aplicar el cambio. Prueba otra vez.",
+                             "I couldn't apply the change. Please try again."))
         return
     ctx.user_data["ficha"] = ficha.model_dump()
     ctx.user_data.pop("fixing_summary", None)
@@ -256,7 +265,8 @@ async def on_file(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
     elif msg.document and msg.document.mime_type in ("application/pdf", "image/jpeg", "image/png"):
         tg_file, mime = await msg.document.get_file(), msg.document.mime_type
     else:
-        await _reply(update, "Ese tipo de archivo no lo puedo leer. Mándame una foto o un PDF.")
+        await _reply(update, t("Ese tipo de archivo no lo puedo leer. Mándame una foto o un PDF.",
+                             "I can't read that type of file. Send me a photo or a PDF."))
         return
     await ctx.bot.send_chat_action(update.effective_chat.id, ChatAction.TYPING)
     # La imagen solo vive en memoria durante la extracción: no se guarda en disco.
@@ -265,7 +275,8 @@ async def on_file(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
     try:
         x = await asyncio.to_thread(requirement.extract, llm, data, mime)
     except LLMError:
-        await _reply(update, "Ahora no puedo leer la carta. Inténtalo en un rato.")
+        await _reply(update, t("Ahora no puedo leer la carta. Inténtalo en un rato.",
+                             "I can't read the letter right now. Try again shortly."))
         return
     finally:
         del data
@@ -288,7 +299,8 @@ async def on_file(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
     await _reply(
         update,
         requirement.confirmation_text(x, tasks, deadline),
-        _kb([("✅ Está bien", CB_REQ_OK), ("❌ No coincide", CB_REQ_NO)]),
+        _kb([(t("✅ Está bien", "✅ That's right"), CB_REQ_OK),
+             (t("❌ No coincide", "❌ It doesn't match"), CB_REQ_NO)]),
     )
 
 
@@ -300,19 +312,24 @@ async def on_requirement(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None
     await query.edit_message_reply_markup(None)
     pending = ctx.user_data.pop("req")
     if query.data == CB_REQ_NO:
-        await _reply(update, "Vale, no guardo nada. Mándame otra foto más clara de la carta.")
+        await _reply(update, t("Vale, no guardo nada. Mándame otra foto más clara de la carta.",
+                             "OK, I won't save anything. Send me a clearer photo of the letter."))
         return
     uid = _uid(update)
     deadline = date.fromisoformat(pending["deadline"]) if pending["deadline"] else None
     req_id = records.save_requirement(uid, pending["x"], pending["tasks"], deadline)
-    msg = "Guardado. Escribe /tareas para ver la lista y /hecho <número> al conseguir cada papel."
+    msg = t("Guardado. Escribe /tareas para ver la lista y /hecho <número> al conseguir "
+            "cada papel.",
+            "Saved. Type /tasks to see the list and /done <number> when you get each "
+            "document.")
     notified = pending["x"].get("fecha_notificacion")
     if deadline and notified:
         rows = records.plan_reminders(uid, req_id, date.fromisoformat(notified), deadline)
         for r in rows:
             schedule_reminder(ctx.job_queue, r.id, uid, r.when)
         if rows:
-            msg += f"\n\n⏰ Te avisaré {len(rows)} veces antes del {deadline:%d/%m/%Y}."
+            msg += t(f"\n\n⏰ Te avisaré {len(rows)} veces antes del {deadline:%d/%m/%Y}.",
+                     f"\n\n⏰ I'll remind you {len(rows)} times before {deadline:%d/%m/%Y}.")
     await _reply(update, msg)
 
 
@@ -322,10 +339,12 @@ async def cmd_tareas(update: Update, _ctx: ContextTypes.DEFAULT_TYPE) -> None:
         return
     req = records.latest_requirement(uid)
     if req is None:
-        await _reply(update, "No tengo ninguna lista todavía.\n\n" + requirement.HOW_TO)
+        await _reply(update, t("No tengo ninguna lista todavía.", "I don't have any list yet.") + "\n\n"
+                     + requirement.HOW_TO)
         return
-    dl = f"\n\n📅 Fecha límite estimada: {req.deadline:%d/%m/%Y}" if req.deadline else ""
-    await _reply(update, "*Tus papeles:*\n" + requirement.tasks_text(req.tasks) + dl)
+    dl = (f"\n\n📅 {t('Fecha límite estimada', 'Estimated deadline')}: {req.deadline:%d/%m/%Y}"
+          if req.deadline else "")
+    await _reply(update, t("*Tus papeles:*", "*Your documents:*") + "\n" + requirement.tasks_text(req.tasks) + dl)
 
 
 async def cmd_hecho(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
@@ -335,19 +354,22 @@ async def cmd_hecho(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
     try:
         n = int(ctx.args[0])
     except (IndexError, ValueError, TypeError):
-        await _reply(update, "Escribe /hecho y el número del papel, por ejemplo: /hecho 2")
+        await _reply(update, t("Escribe /hecho y el número del papel, por ejemplo: /hecho 2",
+                             "Type /done and the document number, for example: /done 2"))
         return
     ok, tasks = records.mark_done(uid, n)
     if not ok:
-        await _reply(update, "No encuentro ese número. Mira la lista con /tareas.")
+        await _reply(update, t("No encuentro ese número. Mira la lista con /tareas.",
+                             "I can't find that number. Check the list with /tasks."))
         return
     left = sum(not t["hecho"] for t in tasks)
     extra = (
-        "¡Ya lo tienes todo! Entrégalo antes de la fecha límite."
+        t("¡Ya lo tienes todo! Entrégalo antes de la fecha límite.",
+          "You have everything! Hand it in before the deadline.")
         if left == 0
-        else f"Te quedan {left}."
+        else t(f"Te quedan {left}.", f"{left} left.")
     )
-    await _reply(update, f"✅ Marcado: {tasks[n - 1]['documento']}. {extra}")
+    await _reply(update, f"✅ {t('Marcado', 'Marked')}: {tasks[n - 1]['documento']}. {extra}")
 
 
 def schedule_reminder(job_queue, reminder_id: int, uid: str, when) -> None:
@@ -399,9 +421,11 @@ async def on_voice(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
         text = await asyncio.to_thread(transcribe, path)
     log.info("voz_transcrita", transcript=text, chars=len(text))
     if not text:
-        await _reply(update, "No he entendido la nota de voz. ¿Me la repites o me lo escribes?")
+        await _reply(update, t("No he entendido la nota de voz. ¿Me la repites o me lo escribes?",
+                             "I didn't understand the voice note. Could you repeat it or write it?"))
         return
-    await _reply(update, f"🎙️ He entendido: «{text}»\n_Si no es eso, escríbemelo y lo corrijo._")
+    await _reply(update, t(f"🎙️ He entendido: «{text}»\n_Si no es eso, escríbemelo y lo corrijo._",
+                             f"🎙️ I understood: \"{text}\"\n_If that's not right, write it to me and I'll correct it._"))
     await answer_text(update, ctx, uid, text)
 
 
@@ -428,7 +452,8 @@ async def on_error(update: object, ctx: ContextTypes.DEFAULT_TYPE) -> None:
     log.error("error_no_controlado", error=type(ctx.error).__name__)
     if isinstance(update, Update) and update.effective_message:
         await update.effective_message.reply_text(
-            "Perdona, algo ha fallado. Inténtalo de nuevo en un momento."
+            t("Perdona, algo ha fallado. Inténtalo de nuevo en un momento.",
+              "Sorry, something went wrong. Please try again in a moment.")
         )
 
 
@@ -455,6 +480,12 @@ def build_application() -> Application:
     app.add_handler(CommandHandler("requerimiento", cmd_requerimiento))
     app.add_handler(CommandHandler("tareas", cmd_tareas))
     app.add_handler(CommandHandler("hecho", cmd_hecho))
+    # Alias en inglés (modo demostración)
+    app.add_handler(CommandHandler("delete", cmd_borrar))
+    app.add_handler(CommandHandler("summary", cmd_resumen))
+    app.add_handler(CommandHandler(["letter", "requirement"], cmd_requerimiento))
+    app.add_handler(CommandHandler("tasks", cmd_tareas))
+    app.add_handler(CommandHandler("done", cmd_hecho))
     app.add_handler(CallbackQueryHandler(on_consent, pattern=r"^consent:"))
     app.add_handler(CallbackQueryHandler(on_delete, pattern=r"^delete:"))
     app.add_handler(CallbackQueryHandler(on_summary, pattern=r"^sum:"))
@@ -475,7 +506,7 @@ def main() -> None:
     settings = get_settings()
     if not settings.allowed_user_ids:
         log.warning("lista_blanca_vacia", aviso="Rellena ALLOWED_USER_IDS en .env")
-    log.info("bot_arrancando", modelo=settings.anthropic_model)
+    log.info("bot_arrancando", modelo=settings.anthropic_model, idioma=settings.bot_language)
     get_assistant().warm_up()  # carga E5 y la KB ahora, no en el primer mensaje
     build_application().run_polling(allowed_updates=Update.ALL_TYPES)
 

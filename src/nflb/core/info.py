@@ -10,6 +10,7 @@ from nflb.core import guardrails
 from nflb.core.prompts import INFO_CORRECTION, INFO_SYSTEM
 from nflb.core.safety import SAFE_GENERIC
 from nflb.core.texts import NO_SE
+from nflb.i18n import is_en, llm_language_rule, t
 from nflb.llm.base import LLMError, LLMProvider
 from nflb.rag.retriever import HybridRetriever, Retrieved
 
@@ -55,7 +56,8 @@ def render(out: InfoOut, items: list[Retrieved]) -> tuple[str, list[str]]:
     ids = [i for i in dict.fromkeys(guardrails.cited_ids(out.respuesta) + out.citas) if i in by_id]
     body = guardrails.strip_citations(out.respuesta)
     labels = list(dict.fromkeys(_source_label(by_id[i].meta) for i in ids))
-    sources = "\n".join(f"📄 Fuente: {lbl}" for lbl in labels)
+    word = t("Fuente", "Source")
+    sources = "\n".join(f"📄 {word}: {lbl}" for lbl in labels)
     text = f"{body}\n\n{sources}" if sources else body
     return guardrails.ensure_closing(guardrails.mask_pii(text)), ids
 
@@ -81,8 +83,14 @@ def answer(
     search_query: str | None = None,
     history: list[dict] | None = None,
 ) -> InfoResult:
-    query = f"{search_query}\n{question}" if search_query and search_query != question else question
+    if is_en() and search_query:
+        query = search_query  # la KB está en español: se busca con la consulta del router
+    elif search_query and search_query != question:
+        query = f"{search_query}\n{question}"
+    else:
+        query = question
     res = retriever.retrieve(query)
+    system = INFO_SYSTEM + llm_language_rule()
     retrieved = [it.id for it in res.items]
     if not res.sufficient:
         return InfoResult(NO_SE, "sin_info", retrieved=retrieved)
@@ -99,7 +107,7 @@ def answer(
     issues: list[str] = []
     for attempt in (1, 2):  # un intento + una regeneración con instrucción correctiva
         try:
-            out = llm.structured(INFO_SYSTEM, messages, InfoOut, max_tokens=3000)
+            out = llm.structured(system, messages, InfoOut, max_tokens=3000)
         except LLMError as e:
             return InfoResult(SAFE_GENERIC, "error", retrieved=retrieved, attempts=attempt,
                               issues=[str(e)])  # fmt: skip

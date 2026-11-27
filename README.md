@@ -41,11 +41,18 @@ uv run nflb-bot                           # arranca el bot
 Otras: `ANTHROPIC_MODEL` (por defecto `claude-sonnet-5-5`), `JUDGE_MODEL`, `WHISPER_MODEL`
 (`small`), `RETENTION_DAYS` (30), `DEBUG_LOG_CONTENT` (`false`).
 
+**Demo en inglés:** `BOT_LANGUAGE=en` pone en inglés los textos fijos, las respuestas, el
+resumen y su PDF, y la transcripción de voz. La base de conocimiento sigue en español: se busca
+con una consulta en español y el modelo traduce al responder, citando las mismas fuentes. Las
+frases de elegibilidad prohibidas y las reglas de urgencia también existen en inglés. Los
+comandos tienen alias en inglés (`/summary`, `/letter`, `/tasks`, `/done`, `/delete`, `/help`).
+La evaluación de `eval/report.md` se hizo en español.
+
 **Pruebas y evaluación**
 
 ```powershell
-uv run pytest -m "not integration"        # 79 pruebas unitarias, sin red
-uv run pytest                             # + integración (E5 real y cadena de voz): 80 en total
+uv run pytest -m "not integration"        # 96 pruebas unitarias, sin red
+uv run pytest                             # + integración (E5 real y cadena de voz): 98 en total
 uv run python -m eval.run                 # evaluación completa → eval/report.md (~5 min, usa la API)
 uv run python -m eval.wer                 # WER sobre las notas de voz de eval/audio/
 uv run ruff check src tests eval scripts

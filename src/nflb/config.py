@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from functools import lru_cache
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, Literal
 
 from pydantic import Field, SecretStr, field_validator
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
@@ -40,6 +40,10 @@ class Settings(BaseSettings):
     # las similitudes (0,79-0,91), así que solo filtra lo claramente ajeno. La abstención
     # fina la hacen el prompt y la verificación de citas (ver README).
     rag_min_score: float = 0.80
+
+    # Idioma de la interfaz y de las respuestas: "es" (por defecto) o "en" (solo para demos).
+    # La base de conocimiento sigue en español; en "en" el asistente traduce al responder.
+    bot_language: Literal["es", "en"] = "es"
 
     # Conversación y retención
     history_turns: int = 10

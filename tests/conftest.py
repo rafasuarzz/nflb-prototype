@@ -1,7 +1,13 @@
+import os
+
 import pytest
 
-from nflb.config import get_settings
-from nflb.db.session import get_engine, init_db
+# Los textos fijos se eligen al importar los módulos: las pruebas van siempre en español,
+# aunque el .env tenga BOT_LANGUAGE=en para una demo.
+os.environ["BOT_LANGUAGE"] = "es"
+
+from nflb.config import get_settings  # noqa: E402
+from nflb.db.session import get_engine, init_db  # noqa: E402
 
 
 @pytest.fixture(autouse=True)

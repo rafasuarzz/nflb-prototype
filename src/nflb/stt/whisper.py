@@ -19,6 +19,7 @@ def _model():
 
 
 def transcribe(path: Path) -> str:
-    segments, _info = _model().transcribe(str(path), language="es", vad_filter=True,
+    segments, _info = _model().transcribe(str(path), language=get_settings().bot_language,
+                                          vad_filter=True,
                                           beam_size=5)  # fmt: skip
     return " ".join(s.text.strip() for s in segments).strip()

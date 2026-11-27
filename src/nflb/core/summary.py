@@ -12,9 +12,10 @@ from datetime import date
 from pydantic import BaseModel, Field
 
 from nflb.core import guardrails
+from nflb.i18n import llm_language_rule, t
 from nflb.llm.base import LLMProvider
 
-NO_INDICADO = "No indicado"
+NO_INDICADO = t("No indicado", "Not stated")
 
 
 class Ficha(BaseModel):
@@ -51,7 +52,7 @@ def _clean(text: str) -> str | None:
     text = guardrails.mask_pii(text.strip())
     if not text or guardrails.find_forbidden(text):
         return None
-    return _EURO.sub("[importe omitido]", text)
+    return _EURO.sub(t("[importe omitido]", "[amount omitted]"), text)
 
 
 def sanitize(f: Ficha, today: date | None = None) -> Ficha:
@@ -80,7 +81,7 @@ def _transcript(history: list[dict]) -> str:
 
 def build_ficha(llm: LLMProvider, history: list[dict]) -> Ficha:
     msg = f"<conversacion>\n{_transcript(history)}\n</conversacion>"
-    out = llm.structured(SUMMARY_SYSTEM, [{"role": "user", "content": msg}], Ficha,
+    out = llm.structured(SUMMARY_SYSTEM + llm_language_rule(), [{"role": "user", "content": msg}], Ficha,
                          max_tokens=3000)  # fmt: skip
     return sanitize(out)
 
@@ -88,7 +89,7 @@ def build_ficha(llm: LLMProvider, history: list[dict]) -> Ficha:
 def apply_corrections(llm: LLMProvider, ficha: Ficha, corrections: str) -> Ficha:
     msg = (f"<ficha_actual>\n{ficha.model_dump_json(indent=1)}\n</ficha_actual>\n\n"
            f"<correcciones>\n{corrections}\n</correcciones>")  # fmt: skip
-    out = llm.structured(FIX_SYSTEM, [{"role": "user", "content": msg}], Ficha, max_tokens=3000)
+    out = llm.structured(FIX_SYSTEM + llm_language_rule(), [{"role": "user", "content": msg}], Ficha, max_tokens=3000)
     return sanitize(out)
 
 
@@ -103,14 +104,24 @@ def _items(v: list[str]) -> str:
 
 
 def ficha_as_text(f: Ficha) -> str:
+    def sec(es: str, en: str) -> str:
+        return f"*{t(es, en)}:*"
+
     return (
-        "📝 *Resumen para tu cita* (borrador)\n\n"
-        f"*Quién vive en casa:* {f.composicion_hogar}\n"
-        f"*Situación actual:* {f.situacion_actual}\n"
-        f"*Lo que más necesito:* {f.necesidad_principal}\n\n"
-        f"*Ayudas por las que he preguntado:*\n{_items(f.ayudas_consultadas)}\n\n"
-        f"*Papeles que ya tengo:*\n{_items(f.documentos_disponibles)}\n\n"
-        f"*Papeles que me faltan:*\n{_items(f.documentos_pendientes)}\n\n"
-        f"*Preguntas para la cita:*\n{_items(f.preguntas_para_la_cita)}\n\n"
-        "Revísalo. ¿Está bien o quieres corregir algo?"
-    )
+        t("📝 *Resumen para tu cita* (borrador)", "📝 *Summary for your appointment* (draft)")
+        + "\n\n"
+        f"{sec('Quién vive en casa', 'Who lives at home')} {f.composicion_hogar}\n"
+        f"{sec('Situación actual', 'Current situation')} {f.situacion_actual}\n"
+        f"{sec('Lo que más necesito', 'What I need most')} {f.necesidad_principal}\n\n"
+        f"{sec('Ayudas por las que he preguntado', 'Benefits I have asked about')}\n"
+        f"{_items(f.ayudas_consultadas)}\n\n"
+        f"{sec('Papeles que ya tengo', 'Documents I already have')}\n"
+        f"{_items(f.documentos_disponibles)}\n\n"
+        f"{sec('Papeles que me faltan', 'Documents I still need')}\n"
+        f"{_items(f.documentos_pendientes)}\n\n"
+        f"{sec('Preguntas para la cita', 'Questions for the appointment')}\n"
+        f"{_items(f.preguntas_para_la_cita)}\n\n"
+        + t("Revísalo. ¿Está bien o quieres corregir algo?",
+            "Please check it. Is it right, or do you want to correct something?")
+    )  # fmt: skip
+

@@ -12,11 +12,15 @@ from reportlab.lib.units import cm
 from reportlab.platypus import Frame, KeepInFrame, Paragraph, Spacer
 
 from nflb.core.summary import NO_INDICADO, Ficha
+from nflb.i18n import t
 
-DISCLAIMER = (
+DISCLAIMER = t(
     "Resumen orientativo preparado por la propia familia con ayuda de un asistente. "
     "No es una valoración. La valoración corresponde a los Servicios Sociales del "
-    "Ayuntamiento de Telde."
+    "Ayuntamiento de Telde.",
+    "Guidance summary prepared by the family itself with the help of an assistant. "
+    "It is not an assessment. The assessment is the responsibility of Telde City Council's "
+    "Social Services.",
 )
 MIN_FONT = 11
 
@@ -36,8 +40,11 @@ def _styles(size: float):
 
 def _story(f: Ficha, size: float):
     body, head, title = _styles(size)
-    story = [Paragraph("Resumen para mi cita con Servicios Sociales", title),
-             Paragraph(f"Fecha: {escape(f.fecha_generacion)}", body), Spacer(1, size * 0.4)]  # fmt: skip
+    heading = t("Resumen para mi cita con Servicios Sociales",
+                "Summary for my appointment with Social Services")  # fmt: skip
+    story = [Paragraph(heading, title),
+             Paragraph(f"{t('Fecha', 'Date')}: {escape(f.fecha_generacion)}", body),
+             Spacer(1, size * 0.4)]  # fmt: skip
 
     def text(h: str, v: str):
         story.extend([Paragraph(escape(h), head), Paragraph(escape(v), body)])
@@ -47,13 +54,14 @@ def _story(f: Ficha, size: float):
         for x in v or [NO_INDICADO]:
             story.append(Paragraph(("• " if v else "") + escape(x), body))
 
-    text("Quién vive en casa", f.composicion_hogar)
-    text("Situación actual", f.situacion_actual)
-    text("Lo que más necesito", f.necesidad_principal)
-    items("Ayudas por las que he preguntado", f.ayudas_consultadas)
-    items("Papeles que ya tengo", f.documentos_disponibles)
-    items("Papeles que me faltan", f.documentos_pendientes)
-    items("Preguntas para la cita", f.preguntas_para_la_cita)
+    text(t("Quién vive en casa", "Who lives at home"), f.composicion_hogar)
+    text(t("Situación actual", "Current situation"), f.situacion_actual)
+    text(t("Lo que más necesito", "What I need most"), f.necesidad_principal)
+    items(t("Ayudas por las que he preguntado", "Benefits I have asked about"),
+          f.ayudas_consultadas)  # fmt: skip
+    items(t("Papeles que ya tengo", "Documents I already have"), f.documentos_disponibles)
+    items(t("Papeles que me faltan", "Documents I still need"), f.documentos_pendientes)
+    items(t("Preguntas para la cita", "Questions for the appointment"), f.preguntas_para_la_cita)
     return story
 
 
